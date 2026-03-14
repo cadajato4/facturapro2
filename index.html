@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Facturación</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0f0f13;
+  --bg2: #16161d;
+  --bg3: #1e1e28;
+  --bg4: #252532;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text: #f0f0f5;
+  --text2: #9090a8;
+  --text3: #5a5a72;
+  --accent: #7c6af7;
+  --accent2: #9d8fff;
+  --accent-bg: rgba(124,106,247,0.12);
+  --accent-border: rgba(124,106,247,0.3);
+  --green: #34d399;
+  --green-bg: rgba(52,211,153,0.1);
+  --red: #f87171;
+  --red-bg: rgba(248,113,113,0.1);
+  --yellow: #fbbf24;
+  --yellow-bg: rgba(251,191,36,0.1);
+  --r: 10px;
+  --r2: 14px;
+}
+body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+
+/* LOGIN */
+#login-screen {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
+  position: relative; overflow: hidden;
+}
+#login-screen::before {
+  content: ''; position: absolute; width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(124,106,247,0.15) 0%, transparent 70%);
+  top: -100px; right: -100px; pointer-events: none;
+}
+#login-screen::after {
+  content: ''; position: absolute; width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(52,211,153,0.08) 0%, transparent 70%);
+  bottom: -50px; left: -50px; pointer-events: none;
+}
+.login-box {
+  width: 100%; max-width: 420px; padding: 2rem;
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: 20px; position: relative; z-index: 1;
+}
+.login-icon {
+  width: 52px; height: 52px; background: var(--accent-bg);
+  border: 1px solid var(--accent-border); border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; margin-bottom: 1.5rem;
+}
+.login-title { font-family: 'Fraunces', serif; font-size: 1.8rem; font-weight: 600; margin-bottom: 6px; }
+.login-sub { color: var(--text2); font-size: 14px; margin-bottom: 2rem; }
+.login-tabs { display: flex; background: var(--bg3); border-radius: var(--r); padding: 4px; margin-bottom: 1.5rem; }
+.login-tab { flex: 1; text-align: center; padding: 8px; border-radius: 7px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text2); transition: all 0.2s; }
+.login-tab.active { background: var(--bg4); color: var(--text); }
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 6px; letter-spacing: 0.5px; }
+.field input {
+  width: 100%; background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 11px 14px; color: var(--text);
+  font-family: 'Outfit', sans-serif; font-size: 14px; outline: none; transition: border 0.2s;
+}
+.field input:focus { border-color: var(--accent); }
+.btn-main {
+  width: 100%; background: var(--accent); color: white; border: none;
+  border-radius: var(--r); padding: 12px; font-family: 'Outfit', sans-serif;
+  font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-top: 6px;
+}
+.btn-main:hover { background: var(--accent2); transform: translateY(-1px); }
+.btn-main:active { transform: translateY(0); }
+.login-msg { font-size: 13px; text-align: center; margin-top: 12px; min-height: 20px; }
+.login-msg.error { color: var(--red); }
+.login-msg.success { color: var(--green); }
+
+/* APP */
+#app { display: none; min-height: 100vh; }
+.layout { display: flex; min-height: 100vh; }
+
+/* SIDEBAR */
+.sidebar {
+  width: 220px; min-height: 100vh; background: var(--bg2);
+  border-right: 1px solid var(--border); display: flex; flex-direction: column;
+  position: fixed; top: 0; left: 0; z-index: 50;
+}
+.sidebar-top { padding: 1.5rem 1.2rem 1rem; border-bottom: 1px solid var(--border); }
+.sidebar-logo {
+  width: 36px; height: 36px; background: var(--accent-bg);
+  border: 1px solid var(--accent-border); border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; font-size: 16px;
+}
+.sidebar-user { margin-top: 12px; }
+.sidebar-user-name { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-user-email { font-size: 11px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-nav { flex: 1; padding: 1rem 0.8rem; display: flex; flex-direction: column; gap: 2px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+  border-radius: var(--r); font-size: 13px; font-weight: 500; color: var(--text2);
+  cursor: pointer; transition: all 0.15s; border: none; background: none; width: 100%; text-align: left;
+}
+.nav-item:hover { background: var(--bg3); color: var(--text); }
+.nav-item.active { background: var(--accent-bg); color: var(--accent2); }
+.nav-icon { font-size: 15px; width: 20px; text-align: center; }
+.sidebar-bottom { padding: 1rem 0.8rem; border-top: 1px solid var(--border); }
+.btn-logout {
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+  border-radius: var(--r); font-size: 13px; color: var(--text3); cursor: pointer;
+  transition: all 0.15s; border: none; background: none;
+}
+.btn-logout:hover { background: var(--red-bg); color: var(--red); }
+
+/* MAIN CONTENT */
+.content { margin-left: 220px; flex: 1; padding: 2rem; min-height: 100vh; }
+.view { display: none; }
+.view.active { display: block; animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* PAGE HEADER */
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.8rem; flex-wrap: wrap; gap: 12px; }
+.page-title { font-family: 'Fraunces', serif; font-size: 1.6rem; font-weight: 600; }
+.page-sub { font-size: 13px; color: var(--text2); margin-top: 2px; }
+
+/* BUTTONS */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: var(--r); font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; }
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { background: var(--accent2); }
+.btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border2); }
+.btn-secondary:hover { background: var(--bg4); }
+.btn-ghost { background: none; color: var(--text2); border: 1px solid var(--border); }
+.btn-ghost:hover { color: var(--text); border-color: var(--border2); }
+.btn-danger { background: var(--red-bg); color: var(--red); border: 1px solid rgba(248,113,113,0.2); }
+.btn-danger:hover { background: rgba(248,113,113,0.2); }
+.btn-success { background: var(--green-bg); color: var(--green); border: 1px solid rgba(52,211,153,0.2); }
+.btn-success:hover { background: rgba(52,211,153,0.2); }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-icon { padding: 7px; border-radius: 8px; }
+
+/* STATS */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 2rem; }
+.stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r2); padding: 1.2rem 1.3rem; }
+.stat-label { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+.stat-value { font-size: 1.6rem; font-weight: 700; line-height: 1; }
+.stat-sub { font-size: 12px; color: var(--text3); margin-top: 5px; }
+.stat-card.s-accent { border-color: var(--accent-border); }
+.stat-card.s-accent .stat-value { color: var(--accent2); }
+.stat-card.s-green .stat-value { color: var(--green); }
+
+/* TABLE */
+.table-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r2); overflow: hidden; }
+.table-top { padding: 1rem 1.2rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.table-title { font-size: 14px; font-weight: 600; }
+table { width: 100%; border-collapse: collapse; }
+th { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text3); padding: 10px 14px; border-bottom: 1px solid var(--border); text-align: left; background: var(--bg3); }
+td { padding: 13px 14px; font-size: 13px; border-bottom: 1px solid var(--border); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.02); }
+.mono { font-family: 'Outfit', monospace; letter-spacing: 0.3px; }
+
+/* BADGES */
+.badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.b-paid { background: var(--green-bg); color: var(--green); }
+.b-pending { background: var(--yellow-bg); color: var(--yellow); }
+.b-draft { background: rgba(255,255,255,0.06); color: var(--text3); }
+.b-overdue { background: var(--red-bg); color: var(--red); }
+
+/* FORM */
+.form-section { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r2); padding: 1.4rem; margin-bottom: 1.2rem; }
+.fs-title { font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 1.2rem; padding-bottom: 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+.fg { display: flex; flex-direction: column; gap: 5px; }
+.fg label { font-size: 11px; font-weight: 500; color: var(--text3); letter-spacing: 0.5px; }
+.fg input, .fg select, .fg textarea {
+  background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--r);
+  padding: 9px 12px; color: var(--text); font-family: 'Outfit', sans-serif; font-size: 13px; outline: none; transition: border 0.2s;
+}
+.fg input:focus, .fg select:focus, .fg textarea:focus { border-color: var(--accent); }
+.fg select option { background: var(--bg3); }
+
+/* ITEMS TABLE */
+.items-tbl { width: 100%; border-collapse: collapse; }
+.items-tbl th { background: var(--bg3); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text3); padding: 8px 10px; border: 1px solid var(--border); }
+.items-tbl td { padding: 5px 6px; border: 1px solid var(--border); }
+.items-tbl input, .items-tbl select {
+  width: 100%; background: transparent; border: none; color: var(--text);
+  font-family: 'Outfit', sans-serif; font-size: 13px; padding: 5px 6px; outline: none;
+}
+.items-tbl input:focus, .items-tbl select:focus { background: var(--accent-bg); border-radius: 4px; }
+.items-tbl select option { background: var(--bg3); }
+
+/* TOTALS */
+.totals-wrap { display: flex; justify-content: flex-end; margin-top: 1rem; }
+.totals-box { width: 280px; }
+.t-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 13px; color: var(--text2); }
+.t-row.grand { font-size: 17px; font-weight: 700; color: var(--text); border-top: 1px solid var(--border2); margin-top: 8px; padding-top: 12px; }
+.t-row .mono { color: var(--text); }
+
+/* SEARCH */
+.search-wrap { position: relative; }
+.search-wrap input { padding-left: 34px; width: 200px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--r); padding: 8px 12px 8px 34px; color: var(--text); font-family: 'Outfit', sans-serif; font-size: 13px; outline: none; }
+.search-wrap input:focus { border-color: var(--accent); }
+.search-wrap::before { content: '⌕'; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 16px; pointer-events: none; }
+
+/* MODAL */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: none; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px); }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--bg2); border: 1px solid var(--border2); border-radius: 18px; max-width: 720px; width: 100%; max-height: 90vh; overflow-y: auto; }
+.modal-head { padding: 1.2rem 1.4rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--bg2); z-index: 5; }
+.modal-title { font-size: 15px; font-weight: 600; }
+
+/* PREVIEW */
+.invoice-preview { padding: 40px; background: white; color: #1a1a2e; font-family: 'Outfit', sans-serif; }
+.inv-top { display: flex; justify-content: space-between; margin-bottom: 40px; }
+.inv-title { font-family: 'Fraunces', serif; font-size: 2rem; font-weight: 600; color: #1a1a2e; }
+.inv-num { font-size: 1rem; color: #7c6af7; font-weight: 600; margin-top: 4px; }
+.inv-meta { text-align: right; font-size: 13px; color: #555; line-height: 2; }
+.inv-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 32px; }
+.inv-party-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #999; margin-bottom: 8px; }
+.inv-party-name { font-size: 15px; font-weight: 600; color: #1a1a2e; margin-bottom: 4px; }
+.inv-party-info { font-size: 12px; color: #666; line-height: 1.8; }
+.inv-table { width: 100%; border-collapse: collapse; margin-bottom: 28px; }
+.inv-table th { padding: 10px 12px; background: #1a1a2e; color: white; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; text-align: left; }
+.inv-table td { padding: 11px 12px; border-bottom: 1px solid #eee; font-size: 12px; color: #333; }
+.inv-totals { margin-left: auto; width: 240px; }
+.inv-t-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 12px; color: #666; }
+.inv-t-row.grand { font-size: 16px; font-weight: 700; color: #1a1a2e; border-top: 2px solid #1a1a2e; margin-top: 8px; padding-top: 10px; }
+.inv-footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; font-size: 11px; color: #999; }
+
+/* CLIENTS */
+.clients-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.client-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r2); padding: 1.2rem; cursor: pointer; transition: all 0.15s; }
+.client-card:hover { border-color: var(--border2); background: var(--bg3); }
+.c-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--accent-bg); border: 1px solid var(--accent-border); display: flex; align-items: center; justify-content: center; color: var(--accent2); font-weight: 700; font-size: 13px; margin-bottom: 10px; }
+.c-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.c-email { font-size: 12px; color: var(--text3); margin-bottom: 10px; }
+.c-stats { display: flex; gap: 14px; }
+.c-stat { font-size: 11px; color: var(--text3); }
+.c-stat span { font-weight: 600; color: var(--text2); }
+
+/* EMPTY */
+.empty { text-align: center; padding: 4rem 2rem; color: var(--text3); }
+.empty-icon { font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.5; }
+.empty h3 { font-size: 1rem; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+.empty p { font-size: 13px; }
+
+/* TOAST */
+.toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--bg4); border: 1px solid var(--border2); color: var(--text); padding: 12px 18px; border-radius: var(--r); font-size: 13px; font-weight: 500; z-index: 999; display: none; animation: slideUp 0.25s ease; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+.toast.show { display: block; }
+@keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* LOADING */
+.loading { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 999; }
+.spinner { width: 36px; height: 36px; border: 3px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.flex { display: flex; } .gap-2 { gap: 8px; } .items-center { align-items: center; }
+.text-right { text-align: right; } .col-span-full { grid-column: 1/-1; }
+.chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 20px; font-size: 11px; background: var(--accent-bg); color: var(--accent2); border: 1px solid var(--accent-border); }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading" id="loading"><div class="spinner"></div></div>
+
+<!-- LOGIN -->
+<div id="login-screen" style="display:none;">
+  <div class="login-box">
+    <div class="login-icon">🧾</div>
+    <div class="login-title">Bienvenido</div>
+    <div class="login-sub">Ingresa a tu sistema de facturación</div>
+    <div class="login-tabs">
+      <div class="login-tab active" onclick="switchAuthTab('login')">Iniciar sesión</div>
+      <div class="login-tab" onclick="switchAuthTab('register')">Registrarse</div>
+    </div>
+    <div id="login-form">
+      <div class="field"><label>CORREO ELECTRÓNICO</label><input type="email" id="l-email" placeholder="tu@correo.com"></div>
+      <div class="field"><label>CONTRASEÑA</label><input type="password" id="l-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="btn-main" onclick="doLogin()">Iniciar sesión</button>
+    </div>
+    <div id="register-form" style="display:none;">
+      <div class="field"><label>CORREO ELECTRÓNICO</label><input type="email" id="r-email" placeholder="tu@correo.com"></div>
+      <div class="field"><label>CONTRASEÑA</label><input type="password" id="r-pass" placeholder="Mínimo 6 caracteres"></div>
+      <div class="field"><label>NOMBRE COMPLETO</label><input type="text" id="r-name" placeholder="Tu nombre"></div>
+      <button class="btn-main" onclick="doRegister()">Crear cuenta</button>
+    </div>
+    <div class="login-msg" id="auth-msg"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <div class="sidebar-logo">🧾</div>
+        <div class="sidebar-user" style="margin-top:12px;">
+          <div class="sidebar-user-name" id="sb-name">Usuario</div>
+          <div class="sidebar-user-email" id="sb-email">correo@email.com</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" onclick="showView('dashboard')" id="nav-dashboard"><span class="nav-icon">▦</span> Dashboard</button>
+        <button class="nav-item" onclick="showView('facturas')" id="nav-facturas"><span class="nav-icon">🧾</span> Facturas</button>
+        <button class="nav-item" onclick="showView('clientes')" id="nav-clientes"><span class="nav-icon">👤</span> Clientes</button>
+        <button class="nav-item" onclick="showView('nueva')" id="nav-nueva"><span class="nav-icon">✦</span> Nueva Factura</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <button class="btn-logout" onclick="doLogout()"><span>⎋</span> Cerrar sesión</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <!-- DASHBOARD -->
+      <div class="view active" id="view-dashboard">
+        <div class="page-header">
+          <div><div class="page-title">Dashboard</div><div class="page-sub" id="fecha-hoy"></div></div>
+          <button class="btn btn-primary" onclick="showView('nueva')">✦ Nueva Factura</button>
+        </div>
+        <div class="stats-grid" id="stats-grid"></div>
+        <div class="table-wrap">
+          <div class="table-top"><span class="table-title">Facturas Recientes</span><button class="btn btn-ghost btn-sm" onclick="showView('facturas')">Ver todas →</button></div>
+          <table><thead><tr><th>N°</th><th>Cliente</th><th>Fecha</th><th>Total</th><th>Estado</th></tr></thead>
+          <tbody id="recent-tbody"></tbody></table>
+        </div>
+      </div>
+
+      <!-- FACTURAS -->
+      <div class="view" id="view-facturas">
+        <div class="page-header">
+          <div><div class="page-title">Facturas</div></div>
+          <div class="flex gap-2 items-center">
+            <div class="search-wrap"><input type="text" id="search-input" placeholder="Buscar..." oninput="renderFacturas()"></div>
+            <button class="btn btn-primary btn-sm" onclick="showView('nueva')">✦ Nueva</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>N°</th><th>Cliente</th><th>Fecha</th><th>Vence</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody id="facturas-tbody"></tbody></table>
+        </div>
+      </div>
+
+      <!-- CLIENTES -->
+      <div class="view" id="view-clientes">
+        <div class="page-header">
+          <div><div class="page-title">Clientes</div></div>
+          <button class="btn btn-primary btn-sm" onclick="openClienteModal()">+ Nuevo Cliente</button>
+        </div>
+        <div class="clients-grid" id="clients-grid"></div>
+      </div>
+
+      <!-- NUEVA FACTURA -->
+      <div class="view" id="view-nueva">
+        <div class="page-header">
+          <div><div class="page-title" id="form-title">Nueva Factura</div></div>
+          <div class="flex gap-2">
+            <button class="btn btn-ghost btn-sm" onclick="showView('facturas')">Cancelar</button>
+            <button class="btn btn-secondary btn-sm" onclick="guardarBorrador()">Guardar Borrador</button>
+            <button class="btn btn-primary" onclick="emitirFactura()">✓ Emitir Factura</button>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="fs-title">📋 Información</div>
+          <div class="form-grid">
+            <div class="fg"><label>N° FACTURA</label><input type="text" id="f-numero" readonly style="opacity:0.5;cursor:not-allowed;"></div>
+            <div class="fg"><label>FECHA EMISIÓN</label><input type="date" id="f-fecha"></div>
+            <div class="fg"><label>FECHA VENCIMIENTO</label><input type="date" id="f-vencimiento"></div>
+            <div class="fg"><label>ESTADO</label>
+              <select id="f-estado"><option value="borrador">Borrador</option><option value="pendiente">Pendiente</option><option value="pagado">Pagado</option></select>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="fs-title">🏢 Datos del Emisor</div>
+          <div class="form-grid">
+            <div class="fg"><label>EMPRESA / NOMBRE</label><input type="text" id="e-nombre" placeholder="Tu empresa S.A.S."></div>
+            <div class="fg"><label>NIT / IDENTIFICACIÓN</label><input type="text" id="e-nit" placeholder="900.123.456-7"></div>
+            <div class="fg"><label>EMAIL</label><input type="email" id="e-email" placeholder="contacto@empresa.com"></div>
+            <div class="fg"><label>TELÉFONO</label><input type="text" id="e-telefono" placeholder="+57 300 000 0000"></div>
+            <div class="fg col-span-full"><label>DIRECCIÓN</label><input type="text" id="e-direccion" placeholder="Calle 123 # 45-67, Ciudad"></div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="fs-title">👤 Cliente</div>
+          <div class="form-grid">
+            <div class="fg"><label>SELECCIONAR CLIENTE</label>
+              <select id="c-selector" onchange="cargarCliente()"><option value="">— Nuevo cliente —</option></select>
+            </div>
+            <div class="fg"><label>NOMBRE / EMPRESA</label><input type="text" id="c-nombre" placeholder="Cliente S.A.S."></div>
+            <div class="fg"><label>NIT / CÉDULA</label><input type="text" id="c-nit" placeholder="123.456.789"></div>
+            <div class="fg"><label>EMAIL</label><input type="email" id="c-email" placeholder="cliente@email.com"></div>
+            <div class="fg"><label>TELÉFONO</label><input type="text" id="c-telefono" placeholder="+57 300 000 0000"></div>
+            <div class="fg col-span-full"><label>DIRECCIÓN</label><input type="text" id="c-direccion" placeholder="Dirección del cliente"></div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="fs-title">📦 Productos / Servicios</div>
+          <div style="overflow-x:auto;">
+            <table class="items-tbl">
+              <thead><tr>
+                <th style="width:38%">Descripción</th>
+                <th style="width:9%">Cant.</th>
+                <th style="width:18%">Precio Unit. (COP)</th>
+                <th style="width:12%">IVA</th>
+                <th style="width:15%">Total</th>
+                <th style="width:8%"></th>
+              </tr></thead>
+              <tbody id="items-tbody"></tbody>
+            </table>
+          </div>
+          <button class="btn btn-ghost btn-sm" style="margin-top:12px;" onclick="addItem()">+ Agregar ítem</button>
+          <div class="totals-wrap">
+            <div class="totals-box">
+              <div class="t-row"><span>Subtotal</span><span class="mono" id="t-sub">$ 0</span></div>
+              <div class="t-row"><span>IVA</span><span class="mono" id="t-iva">$ 0</span></div>
+              <div class="t-row" id="disc-row" style="display:none"><span>Descuento</span><span class="mono" id="t-desc" style="color:var(--green)">-$ 0</span></div>
+              <div class="t-row grand"><span>TOTAL</span><span class="mono" id="t-total">$ 0</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="fs-title">📝 Extras</div>
+          <div class="form-grid">
+            <div class="fg"><label>DESCUENTO GLOBAL (%)</label><input type="number" id="f-desc" min="0" max="100" value="0" oninput="calcTotals()"></div>
+            <div class="fg"><label>NOTAS PARA EL CLIENTE</label><input type="text" id="f-notas" placeholder="Gracias por su preferencia..."></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- PREVIEW MODAL -->
+<div class="modal-overlay" id="preview-modal">
+  <div class="modal" style="max-width:750px;">
+    <div class="modal-head">
+      <span class="modal-title">Vista Previa de Factura</span>
+      <div class="flex gap-2">
+        <button class="btn btn-primary btn-sm" onclick="downloadPDF()">⬇ PDF</button>
+        <button class="btn btn-ghost btn-sm" onclick="closeModal('preview-modal')">✕</button>
+      </div>
+    </div>
+    <div id="preview-body"></div>
+  </div>
+</div>
+
+<!-- CLIENTE MODAL -->
+<div class="modal-overlay" id="cliente-modal">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-head">
+      <span class="modal-title">Nuevo Cliente</span>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('cliente-modal')">✕</button>
+    </div>
+    <div style="padding:1.4rem;">
+      <div class="form-grid">
+        <div class="fg col-span-full"><label>NOMBRE / EMPRESA</label><input type="text" id="nc-nombre"></div>
+        <div class="fg"><label>NIT / CÉDULA</label><input type="text" id="nc-nit"></div>
+        <div class="fg"><label>EMAIL</label><input type="email" id="nc-email"></div>
+        <div class="fg"><label>TELÉFONO</label><input type="text" id="nc-tel"></div>
+        <div class="fg col-span-full"><label>DIRECCIÓN</label><input type="text" id="nc-dir"></div>
+        <div class="fg col-span-full"><button class="btn btn-primary" style="width:100%;" onclick="saveCliente()">Guardar Cliente</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// CONFIGURACIÓN SUPABASE
+// ⚠️ REEMPLAZA ESTOS VALORES CON LOS DE TU PROYECTO SUPABASE
+// ============================================================
+const SUPABASE_URL = 'https://yavpwtmiztspgruixpum.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhdnB3dG1penRzcGdydWl4cHVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MDk3MDEsImV4cCI6MjA4OTA4NTcwMX0.h_oYeVePR-ZgqdHDRaUOYVi1i6ulM25NespLBeVZAf8';
+// ============================================================
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let facturas = [];
+let clientes = [];
+let editingId = null;
+let nextNum = 1;
+let itemCount = 0;
+
+// ---- UTILS ----
+function fmt(n) {
+  return '$ ' + Math.round(n).toLocaleString('es-CO');
+}
+
+function fmtCOP(n) {
+  return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(n);
+}
+
+function toast(msg, dur=2800) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function formatInputCOP(input) {
+  let raw = input.value.replace(/\D/g, '');
+  if (!raw) { input.value = ''; return; }
+  input.value = parseInt(raw).toLocaleString('es-CO');
+}
+
+function parseInputCOP(val) {
+  return parseFloat(String(val).replace(/\./g, '').replace(',', '.')) || 0;
+}
+
+// ---- AUTH ----
+function switchAuthTab(tab) {
+  document.querySelectorAll('.login-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='register')));
+  document.getElementById('login-form').style.display = tab==='login' ? 'block' : 'none';
+  document.getElementById('register-form').style.display = tab==='register' ? 'block' : 'none';
+  document.getElementById('auth-msg').textContent = '';
+}
+
+async function doLogin() {
+  const email = document.getElementById('l-email').value.trim();
+  const pass = document.getElementById('l-pass').value;
+  const msg = document.getElementById('auth-msg');
+  if (!email || !pass) { msg.textContent = 'Completa todos los campos'; msg.className='login-msg error'; return; }
+  msg.textContent = 'Iniciando sesión...'; msg.className='login-msg';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { msg.textContent = error.message; msg.className='login-msg error'; return; }
+  currentUser = data.user;
+  await loadApp();
+}
+
+async function doRegister() {
+  const email = document.getElementById('r-email').value.trim();
+  const pass = document.getElementById('r-pass').value;
+  const name = document.getElementById('r-name').value.trim();
+  const msg = document.getElementById('auth-msg');
+  if (!email || !pass || !name) { msg.textContent = 'Completa todos los campos'; msg.className='login-msg error'; return; }
+  if (pass.length < 6) { msg.textContent = 'La contraseña debe tener mínimo 6 caracteres'; msg.className='login-msg error'; return; }
+  msg.textContent = 'Creando cuenta...'; msg.className='login-msg';
+  const { data, error } = await sb.auth.signUp({ email, password: pass, options: { data: { full_name: name } } });
+  if (error) { msg.textContent = error.message; msg.className='login-msg error'; return; }
+  msg.textContent = '¡Cuenta creada! Revisa tu correo para confirmar.'; msg.className='login-msg success';
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+  currentUser = null; facturas = []; clientes = [];
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+// ---- LOAD APP ----
+async function loadApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('app').style.display = 'block';
+  const meta = currentUser.user_metadata;
+  document.getElementById('sb-name').textContent = meta?.full_name || 'Usuario';
+  document.getElementById('sb-email').textContent = currentUser.email;
+  await loadClientes();
+  await loadFacturas();
+  document.getElementById('loading').style.display = 'none';
+  renderDashboard();
+}
+
+// ---- SUPABASE DATA ----
+async function loadFacturas() {
+  const { data, error } = await sb.from('facturas').select('*').eq('user_id', currentUser.id).order('numero', { ascending: false });
+  if (!error && data) { facturas = data; nextNum = (data[0]?.numero || 0) + 1; }
+}
+
+async function loadClientes() {
+  const { data, error } = await sb.from('clientes').select('*').eq('user_id', currentUser.id).order('nombre');
+  if (!error && data) clientes = data;
+}
+
+async function saveFacturaDB(f) {
+  if (editingId) {
+    const { error } = await sb.from('facturas').update(f).eq('id', editingId).eq('user_id', currentUser.id);
+    if (error) { toast('❌ Error: ' + error.message); return false; }
+    facturas = facturas.map(x => x.id === editingId ? {...f, id: editingId} : x);
+  } else {
+    const { data, error } = await sb.from('facturas').insert([f]).select().single();
+    if (error) { toast('❌ Error: ' + error.message); return false; }
+    facturas.unshift(data);
+    nextNum++;
+  }
+  return true;
+}
+
+async function saveClienteDB(c) {
+  const { data, error } = await sb.from('clientes').insert([c]).select().single();
+  if (error) { toast('❌ Error: ' + error.message); return null; }
+  clientes.push(data);
+  return data;
+}
+
+// ---- VIEWS ----
+function showView(v) {
+  document.querySelectorAll('.view').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+  document.getElementById('view-' + v).classList.add('active');
+  document.getElementById('nav-' + v).classList.add('active');
+  if (v === 'dashboard') renderDashboard();
+  if (v === 'facturas') renderFacturas();
+  if (v === 'clientes') renderClientes();
+  if (v === 'nueva') initForm();
+}
+
+// ---- DASHBOARD ----
+function renderDashboard() {
+  document.getElementById('fecha-hoy').textContent = new Date().toLocaleDateString('es-CO', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  const emitidas = facturas.filter(f => f.estado !== 'borrador');
+  const pagadas = facturas.filter(f => f.estado === 'pagado');
+  const pendientes = facturas.filter(f => f.estado === 'pendiente');
+  const totalEmitido = emitidas.reduce((s,f) => s + (f.total||0), 0);
+  const totalCobrado = pagadas.reduce((s,f) => s + (f.total||0), 0);
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card s-accent"><div class="stat-label">Total Facturado</div><div class="stat-value" style="font-size:1.3rem;">${fmtCOP(totalEmitido)}</div><div class="stat-sub">${emitidas.length} facturas emitidas</div></div>
+    <div class="stat-card s-green"><div class="stat-label">Cobrado</div><div class="stat-value" style="font-size:1.3rem;">${fmtCOP(totalCobrado)}</div><div class="stat-sub">${pagadas.length} pagadas</div></div>
+    <div class="stat-card"><div class="stat-label">Pendientes</div><div class="stat-value">${pendientes.length}</div><div class="stat-sub">por cobrar</div></div>
+    <div class="stat-card"><div class="stat-label">Clientes</div><div class="stat-value">${clientes.length}</div><div class="stat-sub">registrados</div></div>
+  `;
+  const recent = facturas.slice(0, 5);
+  document.getElementById('recent-tbody').innerHTML = recent.length
+    ? recent.map(f => `<tr><td class="mono">#${f.numero}</td><td>${f.cliente_nombre||'—'}</td><td>${f.fecha}</td><td class="mono">${fmtCOP(f.total||0)}</td><td>${badgeHTML(f.estado)}</td></tr>`).join('')
+    : `<tr><td colspan="5"><div class="empty"><div class="empty-icon">🧾</div><h3>Sin facturas aún</h3></div></td></tr>`;
+}
+
+function badgeHTML(e) {
+  const map = { pagado:'b-paid', pendiente:'b-pending', borrador:'b-draft', vencido:'b-overdue' };
+  const labels = { pagado:'Pagado', pendiente:'Pendiente', borrador:'Borrador', vencido:'Vencido' };
+  return `<span class="badge ${map[e]||'b-draft'}">${labels[e]||e}</span>`;
+}
+
+// ---- FACTURAS TABLE ----
+function renderFacturas() {
+  const q = (document.getElementById('search-input')?.value||'').toLowerCase();
+  const filtered = facturas.filter(f => String(f.numero).includes(q) || (f.cliente_nombre||'').toLowerCase().includes(q));
+  document.getElementById('facturas-tbody').innerHTML = filtered.length
+    ? filtered.map(f => `<tr>
+        <td class="mono">#${f.numero}</td><td>${f.cliente_nombre||'—'}</td>
+        <td>${f.fecha}</td><td>${f.vencimiento||'—'}</td>
+        <td class="mono">${fmtCOP(f.total||0)}</td><td>${badgeHTML(f.estado)}</td>
+        <td><div class="flex gap-2">
+          <button class="btn btn-ghost btn-icon btn-sm" onclick="previewFactura('${f.id}')" title="Ver">👁</button>
+          <button class="btn btn-ghost btn-icon btn-sm" onclick="editarFactura('${f.id}')" title="Editar">✏</button>
+          <button class="btn btn-danger btn-icon btn-sm" onclick="eliminarFactura('${f.id}')" title="Eliminar">🗑</button>
+        </div></td>
+      </tr>`).join('')
+    : `<tr><td colspan="7"><div class="empty"><div class="empty-icon">🧾</div><h3>No hay facturas</h3><p>Crea tu primera factura</p></div></td></tr>`;
+}
+
+// ---- CLIENTES ----
+function renderClientes() {
+  const g = document.getElementById('clients-grid');
+  if (!clientes.length) { g.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">👤</div><h3>No hay clientes</h3><p>Agrega tu primer cliente</p></div>`; return; }
+  g.innerHTML = clientes.map(c => {
+    const init = c.nombre.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+    const count = facturas.filter(f => f.cliente_id === c.id).length;
+    const total = facturas.filter(f => f.cliente_id === c.id && f.estado==='pagado').reduce((s,f)=>s+(f.total||0),0);
+    return `<div class="client-card">
+      <div class="c-avatar">${init}</div>
+      <div class="c-name">${c.nombre}</div>
+      <div class="c-email">${c.email||'Sin email'}</div>
+      <div class="c-stats">
+        <div class="c-stat"><span>${count}</span> facturas</div>
+        <div class="c-stat"><span>${fmtCOP(total)}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openClienteModal() {
+  ['nc-nombre','nc-nit','nc-email','nc-tel','nc-dir'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('cliente-modal').classList.add('open');
+}
+
+async function saveCliente() {
+  const nombre = document.getElementById('nc-nombre').value.trim();
+  if (!nombre) { toast('⚠ Ingresa el nombre del cliente'); return; }
+  const c = { user_id: currentUser.id, nombre, nit: document.getElementById('nc-nit').value, email: document.getElementById('nc-email').value, telefono: document.getElementById('nc-tel').value, direccion: document.getElementById('nc-dir').value };
+  const saved = await saveClienteDB(c);
+  if (saved) { closeModal('cliente-modal'); renderClientes(); updateClienteSelector(); toast('✅ Cliente guardado'); }
+}
+
+// ---- FORM ----
+function initForm(factura=null) {
+  editingId = factura ? factura.id : null;
+  document.getElementById('form-title').textContent = factura ? `Editar Factura #${factura.numero}` : 'Nueva Factura';
+  const today = new Date().toISOString().split('T')[0];
+  const due = new Date(Date.now()+30*864e5).toISOString().split('T')[0];
+  document.getElementById('f-numero').value = factura ? factura.numero : nextNum;
+  document.getElementById('f-fecha').value = factura ? factura.fecha : today;
+  document.getElementById('f-vencimiento').value = factura ? (factura.vencimiento||due) : due;
+  document.getElementById('f-estado').value = factura ? factura.estado : 'borrador';
+  document.getElementById('f-notas').value = factura ? (factura.notas||'') : '';
+  document.getElementById('f-desc').value = factura ? (factura.descuento_pct||0) : 0;
+  const em = factura ? factura.emisor : (JSON.parse(localStorage.getItem('fp_emisor')||'{}'));
+  document.getElementById('e-nombre').value = em?.nombre||'';
+  document.getElementById('e-nit').value = em?.nit||'';
+  document.getElementById('e-email').value = em?.email||'';
+  document.getElementById('e-telefono').value = em?.telefono||'';
+  document.getElementById('e-direccion').value = em?.direccion||'';
+  const cl = factura ? { nombre:factura.cliente_nombre, nit:factura.cliente_nit, email:factura.cliente_email, telefono:factura.cliente_telefono, direccion:factura.cliente_direccion, id:factura.cliente_id } : {};
+  document.getElementById('c-nombre').value = cl.nombre||'';
+  document.getElementById('c-nit').value = cl.nit||'';
+  document.getElementById('c-email').value = cl.email||'';
+  document.getElementById('c-telefono').value = cl.telefono||'';
+  document.getElementById('c-direccion').value = cl.direccion||'';
+  updateClienteSelector();
+  if (cl.id) document.getElementById('c-selector').value = cl.id;
+  document.getElementById('items-tbody').innerHTML = '';
+  itemCount = 0;
+  const items = factura ? (typeof factura.items === 'string' ? JSON.parse(factura.items) : factura.items) : [];
+  if (items && items.length) items.forEach(it => addItem(it));
+  else addItem();
+  calcTotals();
+}
+
+function updateClienteSelector() {
+  const sel = document.getElementById('c-selector');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Nuevo cliente —</option>' + clientes.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+}
+
+function cargarCliente() {
+  const id = document.getElementById('c-selector').value;
+  if (!id) return;
+  const c = clientes.find(x => String(x.id)===String(id));
+  if (!c) return;
+  document.getElementById('c-nombre').value = c.nombre;
+  document.getElementById('c-nit').value = c.nit||'';
+  document.getElementById('c-email').value = c.email||'';
+  document.getElementById('c-telefono').value = c.telefono||'';
+  document.getElementById('c-direccion').value = c.direccion||'';
+}
+
+function addItem(data={}) {
+  itemCount++;
+  const id = itemCount;
+  const tr = document.createElement('tr');
+  tr.id = 'item-' + id;
+  const ivaOpts = ['0','5','19'].map(v => `<option value="${v}" ${String(data.iva||'')===v?'selected':''}>${v}%</option>`).join('');
+  const precioFmt = data.price ? Math.round(data.price).toLocaleString('es-CO') : '';
+  tr.innerHTML = `
+    <td><input type="text" value="${data.desc||''}" placeholder="Descripción del servicio..." onchange="calcTotals()"></td>
+    <td><input type="number" value="${data.qty||1}" min="0.01" step="0.01" style="width:55px;" oninput="calcTotals()"></td>
+    <td><input type="text" value="${precioFmt}" placeholder="0" style="width:110px;text-align:right;" oninput="formatInputCOP(this);calcTotals()" data-raw="${data.price||0}"></td>
+    <td><select onchange="calcTotals()">${ivaOpts}</select></td>
+    <td class="mono item-total" id="it-${id}" style="text-align:right;color:var(--text2);">$ 0</td>
+    <td><button class="btn btn-ghost btn-icon btn-sm" onclick="removeItem(${id})">✕</button></td>
+  `;
+  document.getElementById('items-tbody').appendChild(tr);
+  calcTotals();
+}
+
+function removeItem(id) {
+  const tr = document.getElementById('item-' + id);
+  if (tr) { tr.remove(); calcTotals(); }
+}
+
+function getItems() {
+  return Array.from(document.getElementById('items-tbody').querySelectorAll('tr')).map(tr => {
+    const inputs = tr.querySelectorAll('input');
+    const sel = tr.querySelector('select');
+    return {
+      desc: inputs[0].value,
+      qty: parseFloat(inputs[1].value)||0,
+      price: parseInputCOP(inputs[2].value),
+      iva: parseFloat(sel?.value)||0
+    };
+  });
+}
+
+function calcTotals() {
+  const items = getItems();
+  let sub=0, ivaTotal=0;
+  items.forEach((it,i) => {
+    const base = it.qty * it.price;
+    const iva = base * (it.iva/100);
+    sub += base; ivaTotal += iva;
+    const td = document.querySelector(`#items-tbody tr:nth-child(${i+1}) .item-total`);
+    if (td) td.textContent = fmtCOP(base+iva);
+  });
+  const disc = parseFloat(document.getElementById('f-desc')?.value||0);
+  const descuento = (sub+ivaTotal)*(disc/100);
+  const total = sub+ivaTotal-descuento;
+  document.getElementById('t-sub').textContent = fmtCOP(sub);
+  document.getElementById('t-iva').textContent = fmtCOP(ivaTotal);
+  document.getElementById('t-total').textContent = fmtCOP(total);
+  const dr = document.getElementById('disc-row');
+  if (dr) { dr.style.display = disc>0 ? 'flex' : 'none'; document.getElementById('t-desc').textContent = '-' + fmtCOP(descuento); }
+}
+
+function buildFacturaObj(estado) {
+  const items = getItems();
+  let sub=0, ivaTotal=0;
+  items.forEach(it => { const b=it.qty*it.price; sub+=b; ivaTotal+=b*(it.iva/100); });
+  const disc = parseFloat(document.getElementById('f-desc').value||0);
+  const descuento = (sub+ivaTotal)*(disc/100);
+  const total = sub+ivaTotal-descuento;
+  const emisor = { nombre:document.getElementById('e-nombre').value, nit:document.getElementById('e-nit').value, email:document.getElementById('e-email').value, telefono:document.getElementById('e-telefono').value, direccion:document.getElementById('e-direccion').value };
+  localStorage.setItem('fp_emisor', JSON.stringify(emisor));
+  const cliente_id = document.getElementById('c-selector').value || null;
+  return {
+    user_id: currentUser.id,
+    numero: editingId ? facturas.find(f=>f.id===editingId)?.numero : nextNum,
+    fecha: document.getElementById('f-fecha').value,
+    vencimiento: document.getElementById('f-vencimiento').value,
+    estado,
+    notas: document.getElementById('f-notas').value,
+    descuento_pct: disc,
+    emisor: JSON.stringify(emisor),
+    emisor_nombre: emisor.nombre,
+    cliente_id,
+    cliente_nombre: document.getElementById('c-nombre').value||'Sin nombre',
+    cliente_nit: document.getElementById('c-nit').value,
+    cliente_email: document.getElementById('c-email').value,
+    cliente_telefono: document.getElementById('c-telefono').value,
+    cliente_direccion: document.getElementById('c-direccion').value,
+    items: JSON.stringify(items),
+    subtotal: sub, iva_total: ivaTotal, descuento, total
+  };
+}
+
+async function guardarBorrador() {
+  const f = buildFacturaObj('borrador');
+  const ok = await saveFacturaDB(f);
+  if (ok) { toast('💾 Borrador guardado'); if (!editingId) editingId = facturas[0]?.id; }
+}
+
+async function emitirFactura() {
+  const nombre = document.getElementById('c-nombre').value.trim();
+  if (!nombre) { toast('⚠ Ingresa el nombre del cliente'); return; }
+  const estado = document.getElementById('f-estado').value === 'pagado' ? 'pagado' : 'pendiente';
+  const f = buildFacturaObj(estado);
+  const ok = await saveFacturaDB(f);
+  if (ok) { toast('✅ Factura emitida'); setTimeout(() => { showView('facturas'); const fid = editingId || facturas[0]?.id; if (fid) previewFactura(fid); }, 600); }
+}
+
+async function editarFactura(id) {
+  const f = facturas.find(x=>x.id===id);
+  if (!f) return;
+  editingId = id;
+  showView('nueva');
+  setTimeout(() => {
+    const parsed = { ...f, emisor: typeof f.emisor==='string' ? JSON.parse(f.emisor||'{}') : (f.emisor||{}) };
+    initForm(parsed);
+  }, 50);
+}
+
+async function eliminarFactura(id) {
+  if (!confirm('¿Eliminar esta factura?')) return;
+  const { error } = await sb.from('facturas').delete().eq('id', id).eq('user_id', currentUser.id);
+  if (error) { toast('❌ Error: ' + error.message); return; }
+  facturas = facturas.filter(f=>f.id!==id);
+  renderFacturas();
+  toast('🗑 Factura eliminada');
+}
+
+// ---- PREVIEW ----
+function previewFactura(id) {
+  const f = facturas.find(x=>String(x.id)===String(id));
+  if (!f) return;
+  window._pf = f;
+  const emisor = typeof f.emisor==='string' ? JSON.parse(f.emisor||'{}') : (f.emisor||{});
+  const items = typeof f.items==='string' ? JSON.parse(f.items||'[]') : (f.items||[]);
+  const rows = items.map(it => `<tr>
+    <td>${it.desc||'—'}</td>
+    <td style="text-align:center">${it.qty}</td>
+    <td style="text-align:right">${fmtCOP(it.price)}</td>
+    <td style="text-align:center">${it.iva}%</td>
+    <td style="text-align:right">${fmtCOP(it.qty*it.price*(1+it.iva/100))}</td>
+  </tr>`).join('');
+  document.getElementById('preview-body').innerHTML = `
+    <div class="invoice-preview" id="inv-print">
+      <div class="inv-top">
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#999;margin-bottom:8px;">Factura de Venta</div>
+          <div style="font-size:22px;font-weight:700;color:#1a1a2e;">${emisor.nombre||'Mi Empresa'}</div>
+          <div style="font-size:12px;color:#666;margin-top:6px;line-height:1.9;">
+            ${emisor.nit?'NIT: '+emisor.nit+'<br>':''}${emisor.email?emisor.email+'<br>':''}${emisor.telefono?emisor.telefono+'<br>':''}${emisor.direccion||''}
+          </div>
+        </div>
+        <div class="inv-meta">
+          <div style="font-size:2rem;font-weight:800;color:#1a1a2e;">N° ${f.numero}</div>
+          <div>Fecha: <strong>${f.fecha}</strong></div>
+          ${f.vencimiento?`<div>Vence: <strong>${f.vencimiento}</strong></div>`:''}
+          <div style="margin-top:8px;">${badgeHTML(f.estado)}</div>
+        </div>
+      </div>
+      <div class="inv-parties">
+        <div><div class="inv-party-label">Emisor</div><div class="inv-party-name">${emisor.nombre||'—'}</div><div class="inv-party-info">${[emisor.nit?'NIT: '+emisor.nit:'',emisor.email,emisor.telefono,emisor.direccion].filter(Boolean).join('<br>')}</div></div>
+        <div><div class="inv-party-label">Cliente</div><div class="inv-party-name">${f.cliente_nombre||'—'}</div><div class="inv-party-info">${[f.cliente_nit?'NIT: '+f.cliente_nit:'',f.cliente_email,f.cliente_telefono,f.cliente_direccion].filter(Boolean).join('<br>')}</div></div>
+      </div>
+      <table class="inv-table">
+        <thead><tr><th>Descripción</th><th style="text-align:center">Cant.</th><th style="text-align:right">Precio Unit.</th><th style="text-align:center">IVA</th><th style="text-align:right">Total</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="inv-totals">
+        <div class="inv-t-row"><span>Subtotal:</span><span>${fmtCOP(f.subtotal||0)}</span></div>
+        <div class="inv-t-row"><span>IVA:</span><span>${fmtCOP(f.iva_total||0)}</span></div>
+        ${f.descuento>0?`<div class="inv-t-row"><span>Descuento:</span><span style="color:green">-${fmtCOP(f.descuento)}</span></div>`:''}
+        <div class="inv-t-row grand"><span>TOTAL</span><span>${fmtCOP(f.total||0)}</span></div>
+      </div>
+      ${f.notas?`<div class="inv-footer"><strong>Notas:</strong> ${f.notas}</div>`:''}
+    </div>`;
+  document.getElementById('preview-modal').classList.add('open');
+}
+
+function downloadPDF() {
+  const f = window._pf;
+  if (!f) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const emisor = typeof f.emisor==='string' ? JSON.parse(f.emisor||'{}') : (f.emisor||{});
+  const items = typeof f.items==='string' ? JSON.parse(f.items||'[]') : (f.items||[]);
+  let y=20;
+  doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(150,150,150);
+  doc.text('FACTURA DE VENTA', 15, y); y+=6;
+  doc.setFontSize(18); doc.setFont('helvetica','bold'); doc.setTextColor(26,26,46);
+  doc.text(emisor.nombre||'Mi Empresa', 15, y);
+  doc.setFontSize(22); doc.setTextColor(124,106,247);
+  doc.text('N° '+f.numero, 195, y, {align:'right'}); y+=6;
+  doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(100,100,100);
+  [emisor.nit?'NIT: '+emisor.nit:'',emisor.email,emisor.telefono,emisor.direccion].filter(Boolean).forEach(l=>{doc.text(l,15,y);y+=4;});
+  doc.setTextColor(100,100,100);
+  doc.text('Fecha: '+f.fecha, 140, 26); if(f.vencimiento) doc.text('Vence: '+f.vencimiento, 140, 30);
+  y+=6; doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(150,150,150);
+  doc.text('DE:', 15, y); doc.text('PARA:', 110, y); y+=4;
+  doc.setFont('helvetica','normal'); doc.setTextColor(26,26,46); doc.setFontSize(9);
+  doc.text(emisor.nombre||'—', 15, y); doc.text(f.cliente_nombre||'—', 110, y); y+=4;
+  if(emisor.email) doc.text(emisor.email, 15, y); if(f.cliente_email) doc.text(f.cliente_email, 110, y); y+=10;
+  doc.setFillColor(26,26,46); doc.rect(15,y,180,7,'F');
+  doc.setFontSize(8); doc.setTextColor(255,255,255); doc.setFont('helvetica','bold');
+  doc.text('DESCRIPCIÓN',18,y+4.5); doc.text('CANT.',100,y+4.5,{align:'center'}); doc.text('PRECIO',140,y+4.5,{align:'right'}); doc.text('IVA',160,y+4.5,{align:'center'}); doc.text('TOTAL',193,y+4.5,{align:'right'});
+  y+=9; doc.setFont('helvetica','normal'); doc.setTextColor(0,0,0);
+  items.forEach((it,i)=>{
+    if(i%2===0){doc.setFillColor(248,248,252);doc.rect(15,y-3,180,7,'F');}
+    doc.setFontSize(8);
+    doc.text(it.desc||'—',18,y+1,{maxWidth:78}); doc.text(String(it.qty),100,y+1,{align:'center'});
+    doc.text(fmtCOP(it.price),140,y+1,{align:'right'}); doc.text(it.iva+'%',160,y+1,{align:'center'});
+    doc.text(fmtCOP(it.qty*it.price*(1+it.iva/100)),193,y+1,{align:'right'}); y+=7;
+  });
+  y+=6;
+  [['Subtotal',fmtCOP(f.subtotal||0)],['IVA',fmtCOP(f.iva_total||0)],...(f.descuento>0?[['Descuento','-'+fmtCOP(f.descuento)]]:[])]
+    .forEach(([k,v])=>{doc.setFontSize(8);doc.setTextColor(120,120,120);doc.text(k+':',145,y);doc.text(v,193,y,{align:'right'});y+=5;});
+  doc.setDrawColor(26,26,46); doc.line(135,y,195,y); y+=4;
+  doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(0,0,0);
+  doc.text('TOTAL:', 145, y); doc.text(fmtCOP(f.total||0), 193, y, {align:'right'});
+  if(f.notas){y+=10;doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(150,150,150);doc.text('Notas: '+f.notas,15,y,{maxWidth:180});}
+  doc.save(`Factura-${f.numero}.pdf`);
+  toast('📥 PDF descargado');
+}
+
+// ---- INIT ----
+document.addEventListener('DOMContentLoaded', async () => {
+  const { data } = await sb.auth.getSession();
+  if (data?.session?.user) {
+    currentUser = data.session.user;
+    await loadApp();
+  } else {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+  }
+});
+</script>
+</body>
+</html>
