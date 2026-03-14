@@ -831,7 +831,7 @@ function buildFacturaObj(estado) {
     user_id: currentUser.id,
     numero: editingId ? facturas.find(f=>f.id===editingId)?.numero : nextNum,
     fecha: document.getElementById('f-fecha').value,
-    vencimiento: document.getElementById('f-vencimiento').value,
+    vencimiento: document.getElementById('f-vencimiento').value || null,
     estado,
     notas: document.getElementById('f-notas').value,
     descuento_pct: disc,
