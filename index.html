@@ -503,8 +503,8 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 // CONFIGURACIÓN SUPABASE
 // ⚠️ REEMPLAZA ESTOS VALORES CON LOS DE TU PROYECTO SUPABASE
 // ============================================================
-const SUPABASE_URL = 'https://yavpwtmiztspgruixpum.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhdnB3dG1penRzcGdydWl4cHVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MDk3MDEsImV4cCI6MjA4OTA4NTcwMX0.h_oYeVePR-ZgqdHDRaUOYVi1i6ulM25NespLBeVZAf8';
+const SUPABASE_URL = 'https://TU_PROYECTO.supabase.co';
+const SUPABASE_KEY = 'TU_ANON_KEY';
 // ============================================================
 
 const { createClient } = supabase;
@@ -695,9 +695,16 @@ function renderClientes() {
     const count = facturas.filter(f => f.cliente_id === c.id).length;
     const total = facturas.filter(f => f.cliente_id === c.id && f.estado==='pagado').reduce((s,f)=>s+(f.total||0),0);
     return `<div class="client-card">
-      <div class="c-avatar">${init}</div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+        <div class="c-avatar">${init}</div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-ghost btn-icon btn-sm" onclick="editarCliente('${c.id}')" title="Editar">✏</button>
+          <button class="btn btn-danger btn-icon btn-sm" onclick="eliminarCliente('${c.id}')" title="Eliminar">🗑</button>
+        </div>
+      </div>
       <div class="c-name">${c.nombre}</div>
       <div class="c-email">${c.email||'Sin email'}</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">${c.telefono||''} ${c.nit?'· NIT: '+c.nit:''}</div>
       <div class="c-stats">
         <div class="c-stat"><span>${count}</span> facturas</div>
         <div class="c-stat"><span>${fmtCOP(total)}</span></div>
@@ -706,17 +713,52 @@ function renderClientes() {
   }).join('');
 }
 
+let editingClienteId = null;
+
 function openClienteModal() {
+  editingClienteId = null;
   ['nc-nombre','nc-nit','nc-email','nc-tel','nc-dir'].forEach(id => document.getElementById(id).value='');
+  document.querySelector('#cliente-modal .modal-title').textContent = 'Nuevo Cliente';
   document.getElementById('cliente-modal').classList.add('open');
+}
+
+function editarCliente(id) {
+  const c = clientes.find(x => String(x.id)===String(id));
+  if (!c) return;
+  editingClienteId = id;
+  document.getElementById('nc-nombre').value = c.nombre||'';
+  document.getElementById('nc-nit').value = c.nit||'';
+  document.getElementById('nc-email').value = c.email||'';
+  document.getElementById('nc-tel').value = c.telefono||'';
+  document.getElementById('nc-dir').value = c.direccion||'';
+  document.querySelector('#cliente-modal .modal-title').textContent = 'Editar Cliente';
+  document.getElementById('cliente-modal').classList.add('open');
+}
+
+async function eliminarCliente(id) {
+  if (!confirm('¿Eliminar este cliente?')) return;
+  const { error } = await sb.from('clientes').delete().eq('id', id).eq('user_id', currentUser.id);
+  if (error) { toast('❌ Error: ' + error.message); return; }
+  clientes = clientes.filter(c => String(c.id) !== String(id));
+  renderClientes();
+  updateClienteSelector();
+  toast('🗑 Cliente eliminado');
 }
 
 async function saveCliente() {
   const nombre = document.getElementById('nc-nombre').value.trim();
   if (!nombre) { toast('⚠ Ingresa el nombre del cliente'); return; }
-  const c = { user_id: currentUser.id, nombre, nit: document.getElementById('nc-nit').value, email: document.getElementById('nc-email').value, telefono: document.getElementById('nc-tel').value, direccion: document.getElementById('nc-dir').value };
-  const saved = await saveClienteDB(c);
-  if (saved) { closeModal('cliente-modal'); renderClientes(); updateClienteSelector(); toast('✅ Cliente guardado'); }
+  const datos = { nombre, nit: document.getElementById('nc-nit').value, email: document.getElementById('nc-email').value, telefono: document.getElementById('nc-tel').value, direccion: document.getElementById('nc-dir').value };
+  if (editingClienteId) {
+    const { error } = await sb.from('clientes').update(datos).eq('id', editingClienteId).eq('user_id', currentUser.id);
+    if (error) { toast('❌ Error: ' + error.message); return; }
+    clientes = clientes.map(c => String(c.id)===String(editingClienteId) ? {...c, ...datos} : c);
+    closeModal('cliente-modal'); renderClientes(); updateClienteSelector(); toast('✅ Cliente actualizado');
+  } else {
+    const c = { user_id: currentUser.id, ...datos };
+    const saved = await saveClienteDB(c);
+    if (saved) { closeModal('cliente-modal'); renderClientes(); updateClienteSelector(); toast('✅ Cliente guardado'); }
+  }
 }
 
 // ---- FORM ----
@@ -1017,7 +1059,7 @@ function downloadPDF() {
 document.addEventListener('DOMContentLoaded', async () => {
   const { data } = await sb.auth.getSession();
   if (data?.session?.user) {
-   currentUser = data.session.user;
+    currentUser = data.session.user;
     await loadApp();
   } else {
     document.getElementById('loading').style.display = 'none';
