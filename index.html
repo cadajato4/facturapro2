@@ -312,7 +312,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
         <div class="sidebar-logo">🧾</div>
         <div class="sidebar-user" style="margin-top:12px;">
           <div class="sidebar-user-name" id="sb-name">Usuario</div>
-          <div class="sidebar-user-email" id="sb-email">correo@email.com</div>
+          <div class="sidebar-user-email" id="sb-email"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="b0d3dfc2c2d5dff0d5ddd1d9dc9ed3dfdd">[email&#160;protected]</a></div>
         </div>
       </div>
       <nav class="sidebar-nav">
@@ -379,7 +379,8 @@ tr:hover td { background: rgba(255,255,255,0.02); }
         <div class="form-section">
           <div class="fs-title">📋 Información</div>
           <div class="form-grid">
-            <div class="fg"><label>N° FACTURA</label><input type="text" id="f-numero" readonly style="opacity:0.5;cursor:not-allowed;"></div>
+            <div class="fg"><label>N° FACTURA</label><input type="text" id="f-numero" placeholder="Ej: 0251"></div>
+            <div class="fg"><label>OCT <span style="color:var(--text3);font-size:10px;">(opcional)</span></label><input type="text" id="f-oct" placeholder="Ej: 00051622"></div>
             <div class="fg"><label>FECHA EMISIÓN</label><input type="date" id="f-fecha"></div>
             <div class="fg"><label>FECHA VENCIMIENTO <span style="color:var(--text3);font-size:10px;">(opcional)</span></label><input type="date" id="f-vencimiento"></div>
             <div class="fg"><label>ESTADO</label>
@@ -400,16 +401,26 @@ tr:hover td { background: rgba(255,255,255,0.02); }
         </div>
 
         <div class="form-section">
-          <div class="fs-title">👤 Cliente</div>
+          <div class="fs-title">👤 Vendido a</div>
           <div class="form-grid">
             <div class="fg"><label>SELECCIONAR CLIENTE</label>
               <select id="c-selector" onchange="cargarCliente()"><option value="">— Nuevo cliente —</option></select>
             </div>
             <div class="fg"><label>NOMBRE / EMPRESA</label><input type="text" id="c-nombre" placeholder="Cliente S.A.S."></div>
             <div class="fg"><label>NIT / CÉDULA</label><input type="text" id="c-nit" placeholder="123.456.789"></div>
-            <div class="fg"><label>EMAIL</label><input type="email" id="c-email" placeholder="cliente@email.com"></div>
             <div class="fg"><label>TELÉFONO</label><input type="text" id="c-telefono" placeholder="+57 300 000 0000"></div>
             <div class="fg col-span-full"><label>DIRECCIÓN</label><input type="text" id="c-direccion" placeholder="Dirección del cliente"></div>
+            <div class="fg"><label>EMAIL</label><input type="email" id="c-email" placeholder="cliente@email.com"></div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="fs-title">📦 Enviado a <span style="color:var(--text3);font-size:11px;font-weight:400;">(opcional)</span></div>
+          <div class="form-grid">
+            <div class="fg"><label>NOMBRE / EMPRESA</label><input type="text" id="env-nombre" placeholder="Destinatario"></div>
+            <div class="fg"><label>TELÉFONO</label><input type="text" id="env-telefono" placeholder="+57 300 000 0000"></div>
+            <div class="fg"><label>NIT / CÉDULA</label><input type="text" id="env-nit" placeholder="123.456.789"></div>
+            <div class="fg col-span-full"><label>DIRECCIÓN</label><input type="text" id="env-direccion" placeholder="Dirección de envío"></div>
           </div>
         </div>
 
@@ -443,7 +454,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
           <div class="fs-title">📝 Extras</div>
           <div class="form-grid">
             <div class="fg"><label>DESCUENTO GLOBAL (%)</label><input type="number" id="f-desc" min="0" max="100" value="0" oninput="calcTotals()"></div>
-            <div class="fg"><label>NOTAS PARA EL CLIENTE</label><input type="text" id="f-notas" placeholder="Gracias por su preferencia..."></div>
+            <div class="fg col-span-full"><label>NOTAS / GARANTÍA <span style="color:var(--text3);font-size:10px;">(aparece en la factura)</span></label><textarea id="f-notas" rows="3" placeholder="Ej: Solo 1 mes de garantía por software. Display, táctil, batería, apagado, golpes o mojado no tienen garantía."></textarea></div>
           </div>
         </div>
       </div>
@@ -487,13 +498,13 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 
 <div class="toast" id="toast"></div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // ============================================================
 // CONFIGURACIÓN SUPABASE
 // ⚠️ REEMPLAZA ESTOS VALORES CON LOS DE TU PROYECTO SUPABASE
 // ============================================================
-const SUPABASE_URL = 'https://yavpwtmiztspgruixpum.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhdnB3dG1penRzcGdydWl4cHVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MDk3MDEsImV4cCI6MjA4OTA4NTcwMX0.h_oYeVePR-ZgqdHDRaUOYVi1i6ulM25NespLBeVZAf8';
+const SUPABASE_URL = 'https://TU_PROYECTO.supabase.co';
+const SUPABASE_KEY = 'TU_ANON_KEY';
 // ============================================================
 
 const { createClient } = supabase;
@@ -715,6 +726,7 @@ function initForm(factura=null) {
   const today = new Date().toISOString().split('T')[0];
   const due = new Date(Date.now()+30*864e5).toISOString().split('T')[0];
   document.getElementById('f-numero').value = factura ? factura.numero : nextNum;
+  document.getElementById('f-oct').value = factura ? (factura.oct||'') : '';
   document.getElementById('f-fecha').value = factura ? factura.fecha : today;
   document.getElementById('f-vencimiento').value = factura ? (factura.vencimiento||due) : due;
   document.getElementById('f-estado').value = factura ? factura.estado : 'borrador';
@@ -732,6 +744,11 @@ function initForm(factura=null) {
   document.getElementById('c-email').value = cl.email||'';
   document.getElementById('c-telefono').value = cl.telefono||'';
   document.getElementById('c-direccion').value = cl.direccion||'';
+  const env = factura ? { nombre:factura.env_nombre, telefono:factura.env_telefono, nit:factura.env_nit, direccion:factura.env_direccion } : {};
+  document.getElementById('env-nombre').value = env.nombre||'';
+  document.getElementById('env-telefono').value = env.telefono||'';
+  document.getElementById('env-nit').value = env.nit||'';
+  document.getElementById('env-direccion').value = env.direccion||'';
   updateClienteSelector();
   if (cl.id) document.getElementById('c-selector').value = cl.id;
   document.getElementById('items-tbody').innerHTML = '';
@@ -829,7 +846,8 @@ function buildFacturaObj(estado) {
   const cliente_id = document.getElementById('c-selector').value || null;
   return {
     user_id: currentUser.id,
-    numero: editingId ? facturas.find(f=>f.id===editingId)?.numero : nextNum,
+    numero: document.getElementById('f-numero').value || nextNum,
+    oct: document.getElementById('f-oct').value,
     fecha: document.getElementById('f-fecha').value,
     vencimiento: document.getElementById('f-vencimiento').value || null,
     estado,
@@ -843,6 +861,10 @@ function buildFacturaObj(estado) {
     cliente_email: document.getElementById('c-email').value,
     cliente_telefono: document.getElementById('c-telefono').value,
     cliente_direccion: document.getElementById('c-direccion').value,
+    env_nombre: document.getElementById('env-nombre').value,
+    env_telefono: document.getElementById('env-telefono').value,
+    env_nit: document.getElementById('env-nit').value,
+    env_direccion: document.getElementById('env-direccion').value,
     items: JSON.stringify(items),
     subtotal: sub, iva_total: ivaTotal, descuento, total
   };
@@ -899,36 +921,49 @@ function previewFactura(id) {
   </tr>`).join('');
   document.getElementById('preview-body').innerHTML = `
     <div class="invoice-preview" id="inv-print">
+      ${f.notas?`<div style="background:#f8f8f8;border-left:3px solid #1a1a2e;padding:10px 14px;margin-bottom:28px;font-size:11px;color:#555;line-height:1.7;">${f.notas}</div>`:''}
       <div class="inv-top">
         <div>
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#999;margin-bottom:8px;">Factura de Venta</div>
           <div style="font-size:22px;font-weight:700;color:#1a1a2e;">${emisor.nombre||'Mi Empresa'}</div>
-          <div style="font-size:12px;color:#666;margin-top:6px;line-height:1.9;">
-            ${emisor.nit?'NIT: '+emisor.nit+'<br>':''}${emisor.email?emisor.email+'<br>':''}${emisor.telefono?emisor.telefono+'<br>':''}${emisor.direccion||''}
+          ${emisor.nit?`<div style="font-size:11px;color:#888;margin-top:2px;">${emisor.nit}</div>`:''}
+          <div style="font-size:11px;color:#666;margin-top:6px;line-height:1.9;">
+            ${emisor.email?emisor.email+'<br>':''}${emisor.telefono?emisor.telefono+'<br>':''}${emisor.direccion||''}
           </div>
         </div>
         <div class="inv-meta">
-          <div style="font-size:2rem;font-weight:800;color:#1a1a2e;">N° ${f.numero}</div>
-          <div>Fecha: <strong>${f.fecha}</strong></div>
-          ${f.vencimiento?`<div>Vence: <strong>${f.vencimiento}</strong></div>`:''}
+          <div style="font-size:10px;color:#999;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Fecha ${f.fecha}</div>
+          <div style="font-size:1.6rem;font-weight:800;color:#1a1a2e;">FACTURA #${f.numero}</div>
+          ${f.oct?`<div style="font-size:12px;color:#555;margin-top:4px;">Oct ${f.oct}</div>`:''}
+          ${f.vencimiento?`<div style="font-size:12px;color:#555;">Vence: ${f.vencimiento}</div>`:''}
           <div style="margin-top:8px;">${badgeHTML(f.estado)}</div>
         </div>
       </div>
       <div class="inv-parties">
-        <div><div class="inv-party-label">Emisor</div><div class="inv-party-name">${emisor.nombre||'—'}</div><div class="inv-party-info">${[emisor.nit?'NIT: '+emisor.nit:'',emisor.email,emisor.telefono,emisor.direccion].filter(Boolean).join('<br>')}</div></div>
-        <div><div class="inv-party-label">Cliente</div><div class="inv-party-name">${f.cliente_nombre||'—'}</div><div class="inv-party-info">${[f.cliente_nit?'NIT: '+f.cliente_nit:'',f.cliente_email,f.cliente_telefono,f.cliente_direccion].filter(Boolean).join('<br>')}</div></div>
+        <div>
+          <div class="inv-party-label">Vendido a</div>
+          <div style="border:1px solid #ddd;border-radius:8px;padding:12px;">
+            <div class="inv-party-name">${f.cliente_nombre||'—'}</div>
+            <div class="inv-party-info">${[f.cliente_nit?'TLF.: '+f.cliente_telefono:'',f.cliente_nit?'Nit: '+f.cliente_nit:'',f.cliente_direccion,f.cliente_email].filter(Boolean).join('<br>')}</div>
+          </div>
+        </div>
+        ${(f.env_nombre||f.env_telefono)?`<div>
+          <div class="inv-party-label">Enviado a</div>
+          <div style="border:1px solid #ddd;border-radius:8px;padding:12px;">
+            <div class="inv-party-name">${f.env_nombre||'—'}</div>
+            <div class="inv-party-info">${[f.env_telefono?'TLF.: '+f.env_telefono:'',f.env_nit?'Nit: '+f.env_nit:'',f.env_direccion].filter(Boolean).join('<br>')}</div>
+          </div>
+        </div>`:''}
       </div>
       <table class="inv-table">
-        <thead><tr><th>Descripción</th><th style="text-align:center">Cant.</th><th style="text-align:right">Precio Unit.</th><th style="text-align:center">IVA</th><th style="text-align:right">Total</th></tr></thead>
-        <tbody>${rows}</tbody>
+        <thead><tr><th>Cantidad</th><th>Descripción del producto</th>${items.some(i=>i.iva>0)?'<th style="text-align:center">IVA</th>':''}<th style="text-align:right">Valor</th></tr></thead>
+        <tbody>${items.map(it=>`<tr><td style="text-align:center">${it.qty}</td><td>${it.desc||'—'}</td>${items.some(i=>i.iva>0)?`<td style="text-align:center">${it.iva}%</td>`:''}<td style="text-align:right">${fmtCOP(it.qty*it.price*(1+it.iva/100))}</td></tr>`).join('')}</tbody>
       </table>
       <div class="inv-totals">
-        <div class="inv-t-row"><span>Subtotal:</span><span>${fmtCOP(f.subtotal||0)}</span></div>
-        <div class="inv-t-row"><span>IVA:</span><span>${fmtCOP(f.iva_total||0)}</span></div>
+        ${f.subtotal!==f.total?`<div class="inv-t-row"><span>Subtotal:</span><span>${fmtCOP(f.subtotal||0)}</span></div>`:''}
+        ${f.iva_total>0?`<div class="inv-t-row"><span>IVA:</span><span>${fmtCOP(f.iva_total||0)}</span></div>`:''}
         ${f.descuento>0?`<div class="inv-t-row"><span>Descuento:</span><span style="color:green">-${fmtCOP(f.descuento)}</span></div>`:''}
         <div class="inv-t-row grand"><span>TOTAL</span><span>${fmtCOP(f.total||0)}</span></div>
       </div>
-      ${f.notas?`<div class="inv-footer"><strong>Notas:</strong> ${f.notas}</div>`:''}
     </div>`;
   document.getElementById('preview-modal').classList.add('open');
 }
@@ -982,7 +1017,7 @@ function downloadPDF() {
 document.addEventListener('DOMContentLoaded', async () => {
   const { data } = await sb.auth.getSession();
   if (data?.session?.user) {
-    currentUser = data.session.user;
+   currentUser = data.session.user;
     await loadApp();
   } else {
     document.getElementById('loading').style.display = 'none';
